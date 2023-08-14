@@ -3,7 +3,7 @@ package redis
 import (
 	"strings"
 
-	nosql "github.com/andskur/sessions/persistance"
+	nosql "github.com/andskur/gatekeeper/persistance"
 )
 
 // coerceRedisErr process redis error to return

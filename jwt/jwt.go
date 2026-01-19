@@ -1,11 +1,12 @@
 package jwt
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gofrs/uuid"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/andskur/sessions"
 	nosql "github.com/andskur/sessions/persistance"
@@ -44,7 +45,7 @@ func NewJwtSession(secret []byte, expire time.Duration, storage nosql.IStorage) 
 
 // Create generates new jwt token
 // and return it as a signed string
-func (j *SessionJwt) Create(data map[string]interface{}) (sessions.Token, error) {
+func (j *SessionJwt) Create(ctx context.Context, data map[string]interface{}) (sessions.Token, error) {
 	token := jwt.New(j.signingMethod)
 	claims := token.Claims.(jwt.MapClaims)
 
@@ -77,7 +78,7 @@ func (j *SessionJwt) Create(data map[string]interface{}) (sessions.Token, error)
 
 		key := formatStorageKey(userID.(uuid.UUID).String())
 
-		if err = j.storage.StrSet(key).AddExpire(tokenID.String(), j.expire); err != nil {
+		if err = j.storage.StrSet(key).AddExpire(ctx, tokenID.String(), j.expire); err != nil {
 			return sessions.Token{}, fmt.Errorf("create token: %w", err)
 		}
 	}
@@ -90,7 +91,7 @@ func (j *SessionJwt) Create(data map[string]interface{}) (sessions.Token, error)
 // Get validates token, checks expiration,
 // checks storage for such token if it present
 // and return data form given token
-func (j *SessionJwt) Get(token sessions.Token) (map[string]interface{}, error) {
+func (j *SessionJwt) Get(ctx context.Context, token sessions.Token) (map[string]interface{}, error) {
 	claims, err := j.extractClaims(token)
 	if err != nil {
 		return nil, fmt.Errorf("get token: %w", err)
@@ -117,7 +118,7 @@ func (j *SessionJwt) Get(token sessions.Token) (map[string]interface{}, error) {
 
 			// lookup token
 			key := formatStorageKey(claims["uuid"].(string))
-			exists, err := j.storage.StrSet(key).Check(tokenID)
+			exists, err := j.storage.StrSet(key).Check(ctx, tokenID)
 			if !exists || err == nosql.ErrNoSuchKeyFound {
 				return nil, sessions.ErrNotFound
 			}
@@ -149,21 +150,21 @@ func (j *SessionJwt) Get(token sessions.Token) (map[string]interface{}, error) {
 }
 
 // RefreshToken refresh given token
-func (j *SessionJwt) RefreshToken(oldToken sessions.Token) (sessions.Token, error) {
-	data, err := j.Get(oldToken)
+func (j *SessionJwt) RefreshToken(ctx context.Context, oldToken sessions.Token) (sessions.Token, error) {
+	data, err := j.Get(ctx, oldToken)
 	if err != nil {
 		return sessions.Token{}, fmt.Errorf("refresh token: %w", err)
 	}
 
-	if err = j.Delete(oldToken); err != nil {
+	if err = j.Delete(ctx, oldToken); err != nil {
 		return sessions.Token{}, fmt.Errorf("refresh token: %w", err)
 	}
 
-	return j.Create(data)
+	return j.Create(ctx, data)
 }
 
 // Delete token associated id in storage if it present
-func (j *SessionJwt) Delete(token sessions.Token) error {
+func (j *SessionJwt) Delete(ctx context.Context, token sessions.Token) error {
 	// if there is no session storage, jwt token can't be deleted
 	if j.storage == nil {
 		return fmt.Errorf("delete token: %w", sessions.ErrNoStorage)
@@ -184,7 +185,7 @@ func (j *SessionJwt) Delete(token sessions.Token) error {
 	// remove it from tokens storage
 	key := formatStorageKey(claims["uuid"].(string))
 
-	if err = j.storage.StrSet(key).Remove(tokenID); err == nosql.ErrNoSuchKeyFound {
+	if err = j.storage.StrSet(key).Remove(ctx, tokenID); err == nosql.ErrNoSuchKeyFound {
 		return fmt.Errorf("delete token: %w", sessions.ErrNotFound)
 	}
 
@@ -193,7 +194,12 @@ func (j *SessionJwt) Delete(token sessions.Token) error {
 
 // extractClaims extract token claims from session token
 func (j *SessionJwt) extractClaims(token sessions.Token) (jwt.MapClaims, error) {
-	decodedToken, err := jwt.Parse(string(token), func(token *jwt.Token) (interface{}, error) {
+	parser := jwt.NewParser(
+		jwt.WithValidMethods([]string{signingMethod}),
+		jwt.WithoutClaimsValidation(),
+	)
+
+	decodedToken, err := parser.Parse(string(token), func(token *jwt.Token) (interface{}, error) {
 		if token.Method != j.signingMethod {
 			return nil, fmt.Errorf("extract claims: %w: invalid signing method: %s", sessions.ErrUnexpectedToken, token.Method)
 		}

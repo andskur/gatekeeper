@@ -1,5 +1,7 @@
 package sessions
 
+import "context"
+
 // Token represents user session token
 type Token []byte
 
@@ -7,15 +9,15 @@ type Token []byte
 // auth sessions via tokens and associated data
 type ISessions interface {
 	// Create creates new session
-	Create(data map[string]interface{}) (Token, error)
+	Create(ctx context.Context, data map[string]interface{}) (Token, error)
 
 	// Get returns data associated with this token
-	Get(token Token) (data map[string]interface{}, err error)
+	Get(ctx context.Context, token Token) (data map[string]interface{}, err error)
 
 	// RefreshToken by creating and return new one
-	RefreshToken(oldToken Token) (Token, error)
+	RefreshToken(ctx context.Context, oldToken Token) (Token, error)
 
 	// Delete makes token invalid so sequential
 	// Get call will returns ErrNotFound
-	Delete(token Token) error
+	Delete(ctx context.Context, token Token) error
 }

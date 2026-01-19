@@ -1,7 +1,10 @@
 package redis
 
 import (
+	"errors"
 	"strings"
+
+	"github.com/redis/go-redis/v9"
 
 	nosql "github.com/andskur/sessions/persistance"
 )
@@ -25,7 +28,7 @@ func isNilErr(err error) bool {
 	if err == nil {
 		return false
 	}
-	return err.Error() == "redis: nil"
+	return errors.Is(err, redis.Nil)
 }
 
 // isWrongOpErr checks if type is wrong

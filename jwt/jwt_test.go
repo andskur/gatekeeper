@@ -8,9 +8,9 @@ import (
 
 	"github.com/gofrs/uuid"
 
-	"github.com/andskur/sessions"
-	"github.com/andskur/sessions/persistance"
-	"github.com/andskur/sessions/persistance/memory"
+	"github.com/andskur/gatekeeper"
+	"github.com/andskur/gatekeeper/persistance"
+	"github.com/andskur/gatekeeper/persistance/memory"
 )
 
 const testSecret = "super-secret-key"

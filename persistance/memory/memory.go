@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andskur/sessions/persistance"
+	nosql "github.com/andskur/gatekeeper/persistance"
 )
 
 // Storage is an in-memory implementation of IStorage for tests and lightweight use.
@@ -33,7 +33,7 @@ func (s *Storage) Get(ctx context.Context, key string) (data interface{}, err er
 	defer s.mu.RUnlock()
 	v, ok := s.data[key]
 	if !ok {
-		return nil, persistance.NoKeyError(key)
+		return nil, nosql.NoKeyError(key)
 	}
 	return v, nil
 }
@@ -56,7 +56,7 @@ func (s *Storage) SetWithExpire(ctx context.Context, key string, data interface{
 			case <-ctx.Done():
 				return
 			case <-time.After(ttl):
-				s.Delete(context.Background(), key)
+				_ = s.Delete(context.Background(), key)
 			}
 		}()
 	}
@@ -67,7 +67,7 @@ func (s *Storage) Delete(ctx context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.data[key]; !ok {
-		return persistance.NoKeyError(key)
+		return nosql.NoKeyError(key)
 	}
 	delete(s.data, key)
 	return nil
@@ -84,7 +84,7 @@ func (s *Storage) CountKeys(ctx context.Context, pattern string) (count int, err
 	return
 }
 
-func (s *Storage) StrSet(key string) persistance.IStrSet {
+func (s *Storage) StrSet(key string) nosql.IStrSet {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	set, ok := s.sets[key]
@@ -131,7 +131,7 @@ func (s *strSet) Remove(ctx context.Context, val string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.items[val]; !ok {
-		return persistance.ErrNoSuchKeyFound
+		return nosql.ErrNoSuchKeyFound
 	}
 	delete(s.items, val)
 	return nil
@@ -142,10 +142,10 @@ func (s *strSet) Check(ctx context.Context, val string) (bool, error) {
 	defer s.mu.RUnlock()
 	exp, ok := s.items[val]
 	if !ok {
-		return false, persistance.ErrNoSuchKeyFound
+		return false, nosql.ErrNoSuchKeyFound
 	}
 	if !exp.IsZero() && exp.Before(time.Now()) {
-		return false, persistance.ErrNoSuchKeyFound
+		return false, nosql.ErrNoSuchKeyFound
 	}
 	return true, nil
 }

@@ -8,7 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	nosql "github.com/andskur/sessions/persistance"
+	nosql "github.com/andskur/gatekeeper/persistance"
 )
 
 // New creates nosql.IStorage wrapper

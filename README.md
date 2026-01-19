@@ -16,7 +16,7 @@ Go library for JWT-based session management with optional Redis-backed persisten
 
 ## Installation
 ```bash
-go get github.com/andskur/sessions
+go get github.com/andskur/gatekeeper
 ```
 
 ## Quick Start (JWT only)

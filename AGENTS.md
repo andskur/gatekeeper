@@ -254,8 +254,8 @@ if err != nil {
 import (
     "context"
     "time"
-    "github.com/andskur/sessions/jwt"
-    "github.com/andskur/sessions/persistance/redis"
+    "github.com/andskur/gatekeeper/jwt"
+    "github.com/andskur/gatekeeper/persistance/redis"
     goredis "github.com/redis/go-redis/v9"
     "github.com/gofrs/uuid"
 )

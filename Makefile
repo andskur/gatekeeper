@@ -1,3 +1,4 @@
+
 tidy:
 	go mod tidy
 
@@ -8,6 +9,9 @@ test:
 	go test ./...
 
 tests: test
+
+test-cover:
+	go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out
 
 build:
 	go build ./...

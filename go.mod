@@ -1,4 +1,4 @@
-module github.com/andskur/sessions
+module github.com/andskur/gatekeeper
 
 go 1.24
 

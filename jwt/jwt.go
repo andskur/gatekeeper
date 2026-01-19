@@ -8,8 +8,8 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/andskur/sessions"
-	nosql "github.com/andskur/sessions/persistance"
+	"github.com/andskur/gatekeeper"
+	nosql "github.com/andskur/gatekeeper/persistance"
 )
 
 const (

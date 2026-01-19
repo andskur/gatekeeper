@@ -1,11 +1,12 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 // clientSetWrapper implements ISetStr interface
@@ -15,14 +16,14 @@ type clientSetWrapper struct {
 }
 
 // Add string element to set without expire value
-func (c clientSetWrapper) Add(val string) error {
-	return c.AddExpire(val, -1)
+func (c clientSetWrapper) Add(ctx context.Context, val string) error {
+	return c.AddExpire(ctx, val, -1)
 }
 
 // AddExpire add string element to set with expire value
-func (c clientSetWrapper) AddExpire(val string, ttl time.Duration) error {
+func (c clientSetWrapper) AddExpire(ctx context.Context, val string, ttl time.Duration) error {
 	// cleanup expired tokens
-	cmd := c.client.ZRemRangeByScore(c.setKey, "-inf", fmt.Sprintf("%d", time.Now().UTC().Unix()-1))
+	cmd := c.client.ZRemRangeByScore(ctx, c.setKey, "-inf", fmt.Sprintf("%d", time.Now().UTC().Unix()-1))
 	if cmd.Err() != nil {
 		return fmt.Errorf("add expire: %w", coerceRedisErr(cmd.Err(), c.setKey))
 	}
@@ -34,21 +35,21 @@ func (c clientSetWrapper) AddExpire(val string, ttl time.Duration) error {
 		score = float64(time.Now().Add(ttl).UTC().Unix())
 	}
 
-	return coerceRedisErr(c.client.ZAdd(c.setKey, redis.Z{
+	return coerceRedisErr(c.client.ZAdd(ctx, c.setKey, redis.Z{
 		Score:  score,
 		Member: val,
 	}).Err(), c.setKey)
 }
 
 // Remove remove element from string set
-func (c clientSetWrapper) Remove(val string) error {
-	cmd := c.client.ZRem(c.setKey, val)
+func (c clientSetWrapper) Remove(ctx context.Context, val string) error {
+	cmd := c.client.ZRem(ctx, c.setKey, val)
 	return coerceRedisErr(cmd.Err(), c.setKey)
 }
 
 // Check checks element int string set
-func (c clientSetWrapper) Check(val string) (bool, error) {
-	cmd := c.client.ZScore(c.setKey, val)
+func (c clientSetWrapper) Check(ctx context.Context, val string) (bool, error) {
+	cmd := c.client.ZScore(ctx, c.setKey, val)
 	if cmd.Err() != nil {
 		return false, fmt.Errorf("check storage key: %w", coerceRedisErr(cmd.Err(), c.setKey))
 	}
@@ -57,8 +58,8 @@ func (c clientSetWrapper) Check(val string) (bool, error) {
 }
 
 // List all elements in string set
-func (c clientSetWrapper) List() ([]string, error) {
-	cmd := c.client.ZRangeByScore(c.setKey, redis.ZRangeBy{
+func (c clientSetWrapper) List(ctx context.Context) ([]string, error) {
+	cmd := c.client.ZRangeByScore(ctx, c.setKey, &redis.ZRangeBy{
 		Min:   fmt.Sprintf("%d", time.Now().UTC().Unix()),
 		Max:   "+inf",
 		Count: 100,

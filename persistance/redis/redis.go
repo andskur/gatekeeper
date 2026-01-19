@@ -1,11 +1,12 @@
 package redis
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 
 	nosql "github.com/andskur/gatekeeper/persistance"
 )
@@ -23,8 +24,8 @@ type clientWrapper struct {
 }
 
 // Ping sent ping signal to current server and checks connection
-func (c clientWrapper) Ping() (string, error) {
-	pong, err := c.client.Ping().Result()
+func (c clientWrapper) Ping(ctx context.Context) (string, error) {
+	pong, err := c.client.Ping(ctx).Result()
 	if err != nil {
 		return "", fmt.Errorf("redis ping: %w", err)
 	}
@@ -32,8 +33,8 @@ func (c clientWrapper) Ping() (string, error) {
 }
 
 // Get gets redis key using GET cmd, trying to unmarshal json into interface{}
-func (c clientWrapper) Get(key string) (data interface{}, err error) {
-	cmd := c.client.Get(key)
+func (c clientWrapper) Get(ctx context.Context, key string) (data interface{}, err error) {
+	cmd := c.client.Get(ctx, key)
 	if cmd.Err() != nil {
 		if isNilErr(cmd.Err()) {
 			return nil, nosql.NoKeyError(key)
@@ -55,23 +56,23 @@ func (c clientWrapper) Get(key string) (data interface{}, err error) {
 }
 
 // Set sets redis key value marshaling it's value using json
-func (c clientWrapper) Set(key string, data interface{}) error {
-	return c.SetWithExpire(key, data, 0)
+func (c clientWrapper) Set(ctx context.Context, key string, data interface{}) error {
+	return c.SetWithExpire(ctx, key, data, 0)
 }
 
 // SetWithExpire same as Set but with expiration
-func (c clientWrapper) SetWithExpire(key string, data interface{}, ttl time.Duration) error {
+func (c clientWrapper) SetWithExpire(ctx context.Context, key string, data interface{}, ttl time.Duration) error {
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("set with expire: %w", err)
 	}
-	res := c.client.Set(key, bytes, ttl)
+	res := c.client.Set(ctx, key, bytes, ttl)
 	return res.Err()
 }
 
 // Delete deletes key from redis
-func (c clientWrapper) Delete(key string) error {
-	res := c.client.Del(key)
+func (c clientWrapper) Delete(ctx context.Context, key string) error {
+	res := c.client.Del(ctx, key)
 	if res, err := res.Result(); err != nil || res == 0 {
 		if err != nil {
 			return fmt.Errorf("key delete: %w", err)
@@ -82,13 +83,13 @@ func (c clientWrapper) Delete(key string) error {
 }
 
 // CountKeys count keys that match given pattern
-func (c clientWrapper) CountKeys(pattern string) (count int, err error) {
+func (c clientWrapper) CountKeys(ctx context.Context, pattern string) (count int, err error) {
 	var cursor uint64
 	for {
 		var keys []string
-		keys, cursor, err = c.client.Scan(cursor, pattern, 10).Result()
+		keys, cursor, err = c.client.Scan(ctx, cursor, pattern, 10).Result()
 		if err != nil {
-			panic(err)
+			return 0, fmt.Errorf("count keys: %w", err)
 		}
 
 		count += len(keys)
